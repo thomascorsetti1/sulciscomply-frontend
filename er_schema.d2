@@ -1,0 +1,50 @@
+Client: {
+  id: int
+  name: string
+  address: string
+  tax_id: string
+}
+
+AMLFile: {
+  id: int
+  client_id: int
+  status: string
+  last_updated: datetime
+}
+
+GDPRRegister: {
+  id: int
+  client_id: int
+  data_subject_name: string
+  data_category: string
+  processing_purpose: string
+}
+
+Task: {
+  id: int
+  assigned_to_user_id: int
+  client_id: int
+  description: string
+  due_date: datetime
+  status: string
+}
+
+Studio: {
+  id: int
+  name: string
+  address: string
+}
+
+User: {
+  id: int
+  studio_id: int
+  username: string
+  email: string
+  role: string
+}
+
+Client.id -> AMLFile.client_id
+Client.id -> GDPRRegister.client_id
+Client.id -> Task.client_id
+User.id -> Task.assigned_to_user_id
+Studio.id -> User.studio_id
