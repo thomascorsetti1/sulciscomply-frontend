@@ -17,7 +17,8 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     if (!response.ok) {
       throw new Error(`API Error: ${response.statusText}`);
     }
-    return await response.json();
+    const result = await response.json();
+    return result.data !== undefined ? result.data : result;
   } catch (error) {
     console.error('API Call Error:', error);
     throw error;
