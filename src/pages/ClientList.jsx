@@ -7,6 +7,8 @@ export default function ClientList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterRischio, setFilterRischio] = useState('tutti')
   const [formData, setFormData] = useState({
     nome: '',
     studio: '',
@@ -64,18 +66,62 @@ export default function ClientList() {
     return 'text-green-600 font-semibold'
   }
 
+  // Filtro e ricerca
+  const filteredClients = clients.filter(client => {
+    const matchSearch =
+      client.nome?.toLowerCase().includes(search.toLowerCase()) ||
+      client.studio?.toLowerCase().includes(search.toLowerCase())
+    const matchRischio =
+      filterRischio === 'tutti' || client.rischi === filterRischio
+    return matchSearch && matchRischio
+  })
+
   if (loading) return <div className="p-8 text-center">Caricamento...</div>
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Clienti</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold text-gray-900">
+          Clienti
+          <span className="ml-2 text-lg font-normal text-gray-500">
+            ({filteredClients.length}/{clients.length})
+          </span>
+        </h1>
         <button
           onClick={() => setShowForm(!showForm)}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           {showForm ? 'Annulla' : 'Nuovo Cliente'}
         </button>
+      </div>
+
+      {/* Barra ricerca e filtri */}
+      <div className="flex gap-3 mb-6">
+        <input
+          type="text"
+          placeholder="Cerca per nome o studio..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 rounded border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select
+          value={filterRischio}
+          onChange={e => setFilterRischio(e.target.value)}
+          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="tutti">Tutti i rischi</option>
+          <option value="basso">🟢 Basso</option>
+          <option value="medio">🟡 Medio</option>
+          <option value="alto">🔴 Alto</option>
+        </select>
+        {(search || filterRischio !== 'tutti') && (
+          <button
+            onClick={() => { setSearch(''); setFilterRischio('tutti') }}
+            className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
+          >
+            ✕ Reset
+          </button>
+        )}
       </div>
 
       {error && (
@@ -85,7 +131,7 @@ export default function ClientList() {
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Aggiungi Nuovo Cliente</h2>
           <div className="space-y-4">
             <div>
@@ -145,14 +191,16 @@ export default function ClientList() {
             </tr>
           </thead>
           <tbody>
-            {clients.length === 0 && (
+            {filteredClients.length === 0 && (
               <tr>
                 <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                  Nessun cliente trovato. Aggiungi il primo cliente.
+                  {search || filterRischio !== 'tutti'
+                    ? 'Nessun cliente corrisponde ai filtri applicati.'
+                    : 'Nessun cliente trovato. Aggiungi il primo cliente.'}
                 </td>
               </tr>
             )}
-            {clients.map(client => (
+            {filteredClients.map(client => (
               <tr key={client.id} className="border-b hover:bg-gray-50">
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{client.nome}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{client.studio || '—'}</td>
