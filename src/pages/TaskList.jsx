@@ -7,6 +7,9 @@ export default function TaskList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterStato, setFilterStato] = useState('tutti')
+  const [filterClient, setFilterClient] = useState('tutti')
   const [formData, setFormData] = useState({
     client_id: '',
     descrizione: '',
@@ -40,10 +43,7 @@ export default function TaskList() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      await tasksAPI.create({
-        ...formData,
-        due_date: formData.due_date || null,
-      })
+      await tasksAPI.create({ ...formData, due_date: formData.due_date || null })
       setFormData({ client_id: '', descrizione: '', stato: 'aperto', due_date: '' })
       setShowForm(false)
       fetchData()
@@ -93,9 +93,7 @@ export default function TaskList() {
 
   const isDueToday = (task) => {
     if (!task.due_date || task.stato === 'chiuso') return false
-    const due = new Date(task.due_date)
-    const today = new Date()
-    return due.toDateString() === today.toDateString()
+    return new Date(task.due_date).toDateString() === new Date().toDateString()
   }
 
   const formatDate = (date) => {
@@ -103,16 +101,31 @@ export default function TaskList() {
     return new Date(date).toLocaleDateString('it-IT')
   }
 
+  const filteredTasks = tasks.filter(task => {
+    const clientName = getClientName(task).toLowerCase()
+    const matchSearch = task.descrizione?.toLowerCase().includes(search.toLowerCase()) ||
+      clientName.includes(search.toLowerCase())
+    const matchStato = filterStato === 'tutti' || task.stato === filterStato
+    const matchClient = filterClient === 'tutti' || task.client_id === filterClient
+    return matchSearch && matchStato && matchClient
+  })
+
   const overdueCount = tasks.filter(isOverdue).length
   const dueTodayCount = tasks.filter(isDueToday).length
+  const hasFilters = search || filterStato !== 'tutti' || filterClient !== 'tutti'
 
   if (loading) return <div className="p-8 text-center">Caricamento...</div>
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900">Task</h1>
+          <h1 className="text-4xl font-bold text-gray-900">
+            Task
+            <span className="ml-2 text-lg font-normal text-gray-500">
+              ({filteredTasks.length}/{tasks.length})
+            </span>
+          </h1>
           <div className="flex gap-3 mt-2">
             {overdueCount > 0 && (
               <span className="px-2 py-1 bg-red-100 text-red-700 text-sm rounded-full font-medium">
@@ -134,23 +147,55 @@ export default function TaskList() {
         </button>
       </div>
 
+      <div className="flex gap-3 mb-6 flex-wrap">
+        <input
+          type="text"
+          placeholder="Cerca per descrizione o cliente..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 min-w-48 rounded border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <select
+          value={filterStato}
+          onChange={e => setFilterStato(e.target.value)}
+          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="tutti">Tutti gli stati</option>
+          <option value="aperto">🟡 Aperto</option>
+          <option value="in_corso">🔵 In corso</option>
+          <option value="chiuso">🟢 Chiuso</option>
+        </select>
+        <select
+          value={filterClient}
+          onChange={e => setFilterClient(e.target.value)}
+          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="tutti">Tutti i clienti</option>
+          {clients.map(c => (
+            <option key={c.id} value={c.id}>{c.nome}</option>
+          ))}
+        </select>
+        {hasFilters && (
+          <button
+            onClick={() => { setSearch(''); setFilterStato('tutti'); setFilterClient('tutti') }}
+            className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
+          >
+            ✕ Reset
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="mb-6 p-4 bg-red-100 text-red-700 rounded">Errore: {error}</div>
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Aggiungi Nuovo Task</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Cliente *</label>
-              <select
-                name="client_id"
-                value={formData.client_id}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
-              >
+              <select name="client_id" value={formData.client_id} onChange={handleInputChange} required className="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
                 <option value="">Seleziona un cliente</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>{client.nome}</option>
@@ -159,25 +204,12 @@ export default function TaskList() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Descrizione *</label>
-              <textarea
-                name="descrizione"
-                value={formData.descrizione}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
-                rows="3"
-                placeholder="Es. Verifica documentazione antiriciclaggio"
-              />
+              <textarea name="descrizione" value={formData.descrizione} onChange={handleInputChange} required className="mt-1 block w-full rounded border-gray-300 border px-3 py-2" rows="3" placeholder="Es. Verifica documentazione antiriciclaggio" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Stato</label>
-                <select
-                  name="stato"
-                  value={formData.stato}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
-                >
+                <select name="stato" value={formData.stato} onChange={handleInputChange} className="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
                   <option value="aperto">Aperto</option>
                   <option value="in_corso">In corso</option>
                   <option value="chiuso">Chiuso</option>
@@ -185,21 +217,10 @@ export default function TaskList() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Scadenza</label>
-                <input
-                  type="date"
-                  name="due_date"
-                  value={formData.due_date}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded border-gray-300 border px-3 py-2"
-                />
+                <input type="date" name="due_date" value={formData.due_date} onChange={handleInputChange} className="mt-1 block w-full rounded border-gray-300 border px-3 py-2" />
               </div>
             </div>
-            <button
-              onClick={handleSubmit}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-            >
-              Salva Task
-            </button>
+            <button onClick={handleSubmit} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salva Task</button>
           </div>
         </div>
       )}
@@ -216,22 +237,19 @@ export default function TaskList() {
             </tr>
           </thead>
           <tbody>
-            {tasks.length === 0 && (
+            {filteredTasks.length === 0 && (
               <tr>
                 <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                  Nessun task trovato. Aggiungi il primo task.
+                  {hasFilters ? 'Nessun task corrisponde ai filtri.' : 'Nessun task trovato.'}
                 </td>
               </tr>
             )}
-            {tasks.map(task => (
-              <tr
-                key={task.id}
-                className={`border-b hover:bg-gray-50 ${isOverdue(task) ? 'bg-red-50' : ''}`}
-              >
+            {filteredTasks.map(task => (
+              <tr key={task.id} className={`border-b hover:bg-gray-50 ${isOverdue(task) ? 'bg-red-50' : ''}`}>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div className="flex items-center gap-2">
-                    {isOverdue(task) && <span title="In ritardo">🔴</span>}
-                    {isDueToday(task) && <span title="Scade oggi">🟠</span>}
+                    {isOverdue(task) && <span>🔴</span>}
+                    {isDueToday(task) && <span>🟠</span>}
                     {task.descrizione}
                   </div>
                 </td>
@@ -240,23 +258,14 @@ export default function TaskList() {
                   {formatDate(task.due_date)}
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <select
-                    value={task.stato}
-                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                    className={`rounded px-2 py-1 text-sm font-medium ${getStatoColor(task.stato)}`}
-                  >
+                  <select value={task.stato} onChange={(e) => handleStatusChange(task.id, e.target.value)} className={`rounded px-2 py-1 text-sm font-medium ${getStatoColor(task.stato)}`}>
                     <option value="aperto">Aperto</option>
                     <option value="in_corso">In corso</option>
                     <option value="chiuso">Chiuso</option>
                   </select>
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <button
-                    onClick={() => handleDelete(task.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Elimina
-                  </button>
+                  <button onClick={() => handleDelete(task.id)} className="text-red-600 hover:text-red-800">Elimina</button>
                 </td>
               </tr>
             ))}
