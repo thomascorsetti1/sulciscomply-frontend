@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
+import {supabase } from "../supabase";
+import { 
   PieChart,
   Pie,
   Cell,
@@ -38,20 +39,25 @@ export default function ClientDetail() {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("token");
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const [clientRes, tasksRes, amlRes] = await Promise.all([
           fetch(`${API_BASE}/clients/${id}`, { headers }),
           fetch(`${API_BASE}/tasks?client_id=${id}`, { headers }),
-          fetch(`${API_BASE}/aml/${id}`, { headers }),
+          fetch(`${API_BASE}/aml-fascicoli?client_id=${id}`, { headers }),
+
         ]);
 
         if (!clientRes.ok) throw new Error("Cliente non trovato");
 
-        const clientData = await clientRes.json();
-        const tasksData = tasksRes.ok ? await tasksRes.json() : [];
-        const amlData = amlRes.ok ? await amlRes.json() : null;
+      const clientJson = await clientRes.json();
+      const clientData = clientJson.data;
+      const tasksJson = tasksRes.ok ? await tasksRes.json() : { data: [] };
+      const tasksData = tasksJson.data;
+      const amlJson = amlRes.ok ? await amlRes.json() : { data: null };
+      const amlData = amlJson.data?.[0] || null;
 
         setClient(clientData);
         setTasks(Array.isArray(tasksData) ? tasksData : []);
@@ -111,7 +117,7 @@ export default function ClientDetail() {
 
   if (!client) return null;
 
-  const riskLevel = client.livello_rischio?.toLowerCase() || "basso";
+  const riskLevel = client.rischi?.toLowerCase() || "basso";
   const riskColor = RISK_COLORS[riskLevel] || "#6b7280";
 
   return (
@@ -265,16 +271,16 @@ export default function ClientDetail() {
                 {aml ? (
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">
-                      {aml.aggiornato ? "✅" : "⚠️"}
+                      {aml.stato === "aggiornato" ? "✅" : "⚠️"}
                     </span>
                     <div>
                       <p className="text-sm font-medium text-gray-800">
-                        {aml.aggiornato ? "Posizione aggiornata" : "Richiede aggiornamento"}
+                        {aml.stato === "aggiornato" ? "Posizione aggiornata" : "Richiede aggiornamento"}
                       </p>
                       {aml.data_aggiornamento && (
                         <p className="text-xs text-gray-400">
                           Ultimo aggiornamento:{" "}
-                          {new Date(aml.data_aggiornamento).toLocaleDateString("it-IT")}
+                          {new Date(aml.ultima_due_diligence).toLocaleDateString("it-IT")}
                         </p>
                       )}
                     </div>

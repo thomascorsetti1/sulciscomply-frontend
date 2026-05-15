@@ -24,6 +24,7 @@ export default function ClientList() {
     try {
       setLoading(true)
       const data = await clientsAPI.getAll()
+      console.log('PRIMO CLIENTE:', data[0]) 
       setClients(data)
     } catch (err) {
       setError(err.message)
@@ -209,7 +210,7 @@ export default function ClientList() {
                 </td>
                 <td className="px-6 py-4 text-sm space-x-2">
                   <button
-                    onClick={() => navigate(`/clients/${client.id}`)}
+                    
                     className="text-blue-600 hover:text-blue-800"
                   >
                     Dettagli
