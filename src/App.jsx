@@ -6,7 +6,7 @@ import ClientList from './pages/ClientList'
 import ClientDetail from './pages/ClientDetail'
 import TaskList from './pages/TaskList'
 import Login from './pages/Login'
-import Calendar from './pages/Calendar'
+
 import AuditTrail from './pages/AuditTrail'
 import Report from './pages/Report'
 
@@ -44,7 +44,7 @@ function Sidebar({ onLogout, userEmail, taskInRitardo }) {
           )}
         </Link>
         <Link to="/calendario" className={linkClass('/calendario')}>
-          <span>📅 Calendario</span>
+        
         </Link>
         <Link to="/audit-trail" className={linkClass('/audit-trail')}>
           <span>🔍 Audit Trail</span>
@@ -258,7 +258,7 @@ function AppLayout({ session }) {
             <Route path="/clients" element={<ClientList />} />
             <Route path="/clients/:id" element={<ClientDetail />} />
             <Route path="/tasks" element={<TaskList />} />
-            <Route path="/calendario" element={<Calendar />} />
+      
             <Route path="/audit-trail" element={<AuditTrail />} />
             <Route path="/report" element={<Report />} />
           </Routes>
