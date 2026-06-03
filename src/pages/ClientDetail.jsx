@@ -35,11 +35,18 @@ export default function ClientDetail() {
   const [showGdprForm, setShowGdprForm] = useState(false)
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [showFiscaleForm, setShowFiscaleForm] = useState(false)
+  const [showEditClient, setShowEditClient] = useState(false)
 
   const [amlForm, setAmlForm] = useState({ risk_rating: 'basso', ultima_due_diligence: '', scadenza_aggiornamento: '', note: '', stato: 'attivo' })
   const [gdprForm, setGdprForm] = useState({ consensi_ottenuti: false, dpia_effettuata: false, scadenza_aggiornamento: '', categorie_dati: '', note: '', stato: 'attivo' })
   const [taskForm, setTaskForm] = useState({ descrizione: '', stato: 'aperto', due_date: '' })
   const [fiscaleForm, setFiscaleForm] = useState({ regime_fiscale: '', codice_fiscale: '', partita_iva: '', note: '', stato: 'attivo' })
+  const [editForm, setEditForm] = useState({ nome: '', email: '', rischi: 'basso', tipo_cliente: '' })
+
+  const oggi = new Date()
+  oggi.setHours(0, 0, 0, 0)
+  const fraSetteGiorni = new Date(oggi)
+  fraSetteGiorni.setDate(oggi.getDate() + 7)
 
   useEffect(() => { fetchAll() }, [id])
 
@@ -54,6 +61,7 @@ export default function ClientDetail() {
         profiliFiscaliAPI.getByClient(id),
       ])
       setClient(c)
+      setEditForm({ nome: c.nome || '', email: c.email || '', rischi: c.rischi || 'basso', tipo_cliente: c.tipo_cliente || '' })
       setAml(Array.isArray(a) ? a : [])
       setGdpr(Array.isArray(g) ? g : [])
       setTasks(Array.isArray(t) ? t : [])
@@ -65,6 +73,14 @@ export default function ClientDetail() {
     }
   }
 
+  const handleEditSubmit = async () => {
+    try {
+      await clientsAPI.update(id, editForm)
+      setShowEditClient(false)
+      fetchAll()
+    } catch (err) { setError(err.message) }
+  }
+
   const handleAmlSubmit = async () => {
     try {
       await amlAPI.create({ ...amlForm, client_id: id })
@@ -74,6 +90,13 @@ export default function ClientDetail() {
     } catch (err) { setError(err.message) }
   }
 
+  const handleDeleteAml = async (amlId) => {
+    if (confirm('Eliminare questo fascicolo AML?')) {
+      try { await amlAPI.delete(amlId); fetchAll() }
+      catch (err) { setError(err.message) }
+    }
+  }
+
   const handleGdprSubmit = async () => {
     try {
       await gdprAPI.create({ ...gdprForm, client_id: id })
@@ -81,6 +104,13 @@ export default function ClientDetail() {
       setGdprForm({ consensi_ottenuti: false, dpia_effettuata: false, scadenza_aggiornamento: '', categorie_dati: '', note: '', stato: 'attivo' })
       fetchAll()
     } catch (err) { setError(err.message) }
+  }
+
+  const handleDeleteGdpr = async (gdprId) => {
+    if (confirm('Eliminare questo registro GDPR?')) {
+      try { await gdprAPI.delete(gdprId); fetchAll() }
+      catch (err) { setError(err.message) }
+    }
   }
 
   const handleTaskSubmit = async () => {
@@ -101,20 +131,32 @@ export default function ClientDetail() {
     } catch (err) { setError(err.message) }
   }
 
+  const handleDeleteFiscale = async (fiscaleId) => {
+    if (confirm('Eliminare questo profilo fiscale?')) {
+      try { await profiliFiscaliAPI.delete(fiscaleId); fetchAll() }
+      catch (err) { setError(err.message) }
+    }
+  }
+
   const handleTaskStatus = async (taskId, newStato) => {
-    try {
-      await tasksAPI.update(taskId, { stato: newStato })
-      fetchAll()
-    } catch (err) { setError(err.message) }
+    try { await tasksAPI.update(taskId, { stato: newStato }); fetchAll() }
+    catch (err) { setError(err.message) }
   }
 
   const handleDeleteTask = async (taskId) => {
     if (confirm('Eliminare questo task?')) {
-      try {
-        await tasksAPI.delete(taskId)
-        fetchAll()
-      } catch (err) { setError(err.message) }
+      try { await tasksAPI.delete(taskId); fetchAll() }
+      catch (err) { setError(err.message) }
     }
+  }
+
+  const badgeScadenza = (due_date) => {
+    if (!due_date) return null
+    const scad = new Date(due_date)
+    scad.setHours(0, 0, 0, 0)
+    if (scad < oggi) return <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">In ritardo</span>
+    if (scad <= fraSetteGiorni) return <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">Scade presto</span>
+    return null
   }
 
   if (loading) return <div className="p-8 text-center">Caricamento...</div>
@@ -122,14 +164,51 @@ export default function ClientDetail() {
 
   const renderPanoramica = () => (
     <div className="space-y-4">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="font-semibold text-gray-900">Dati Cliente</h3>
+        <button onClick={() => setShowEditClient(!showEditClient)} className="text-sm text-blue-600 hover:underline">
+          {showEditClient ? 'Annulla' : '✏️ Modifica'}
+        </button>
+      </div>
+      {showEditClient && (
+        <div className="bg-blue-50 border border-blue-100 rounded p-4 mb-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nome</label>
+              <input type="text" value={editForm.nome} onChange={e => setEditForm(p => ({ ...p, nome: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Livello di Rischio</label>
+              <select value={editForm.rischi} onChange={e => setEditForm(p => ({ ...p, rischi: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                <option value="basso">Basso</option>
+                <option value="medio">Medio</option>
+                <option value="alto">Alto</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Tipo Cliente</label>
+              <select value={editForm.tipo_cliente} onChange={e => setEditForm(p => ({ ...p, tipo_cliente: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+                <option value="">Seleziona</option>
+                <option value="persona_fisica">Persona fisica</option>
+                <option value="persona_giuridica">Persona giuridica</option>
+              </select>
+            </div>
+          </div>
+          <button onClick={handleEditSubmit} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Salva modifiche</button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-gray-50 rounded p-4">
           <p className="text-xs text-gray-500 mb-1">Nome</p>
           <p className="font-semibold text-gray-900">{client.nome}</p>
         </div>
         <div className="bg-gray-50 rounded p-4">
-          <p className="text-xs text-gray-500 mb-1">Studio</p>
-          <p className="font-semibold text-gray-900">{client.studio || '—'}</p>
+          <p className="text-xs text-gray-500 mb-1">Email</p>
+          <p className="font-semibold text-gray-900">{client.email || '—'}</p>
         </div>
         <div className="bg-gray-50 rounded p-4">
           <p className="text-xs text-gray-500 mb-1">Livello di Rischio</p>
@@ -148,7 +227,7 @@ export default function ClientDetail() {
           { label: 'Profili Fiscali', value: fiscale.length, color: 'text-green-600' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-white border rounded p-4 text-center">
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            <p className={'text-2xl font-bold ' + color}>{value}</p>
             <p className="text-xs text-gray-500 mt-1">{label}</p>
           </div>
         ))}
@@ -207,9 +286,10 @@ export default function ClientDetail() {
             <div key={a.id} className="border rounded p-4 bg-white">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className={`text-sm font-semibold ${rischioColor(a.risk_rating)}`}>Rischio: {a.risk_rating}</span>
+                  <span className={'text-sm font-semibold ' + rischioColor(a.risk_rating)}>Rischio: {a.risk_rating}</span>
                   <span className="ml-3 text-xs bg-gray-100 px-2 py-0.5 rounded">{a.stato}</span>
                 </div>
+                <button onClick={() => handleDeleteAml(a.id)} className="text-red-500 hover:text-red-700 text-xs">Elimina</button>
               </div>
               <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-gray-600">
                 <span>Ultima DD: {formatDate(a.ultima_due_diligence)}</span>
@@ -264,13 +344,16 @@ export default function ClientDetail() {
         <div className="space-y-3">
           {gdpr.map(g => (
             <div key={g.id} className="border rounded p-4 bg-white">
-              <div className="flex gap-3 text-xs mb-2">
-                <span className={`px-2 py-0.5 rounded ${g.consensi_ottenuti ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  Consensi: {g.consensi_ottenuti ? 'Sì' : 'No'}
-                </span>
-                <span className={`px-2 py-0.5 rounded ${g.dpia_effettuata ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  DPIA: {g.dpia_effettuata ? 'Sì' : 'No'}
-                </span>
+              <div className="flex justify-between items-start">
+                <div className="flex gap-3 text-xs mb-2">
+                  <span className={'px-2 py-0.5 rounded ' + (g.consensi_ottenuti ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
+                    Consensi: {g.consensi_ottenuti ? 'Sì' : 'No'}
+                  </span>
+                  <span className={'px-2 py-0.5 rounded ' + (g.dpia_effettuata ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
+                    DPIA: {g.dpia_effettuata ? 'Sì' : 'No'}
+                  </span>
+                </div>
+                <button onClick={() => handleDeleteGdpr(g.id)} className="text-red-500 hover:text-red-700 text-xs">Elimina</button>
               </div>
               <div className="text-xs text-gray-600">
                 <span>Scadenza: {formatDate(g.scadenza_aggiornamento)}</span>
@@ -333,11 +416,14 @@ export default function ClientDetail() {
         <div className="space-y-3">
           {fiscale.map(f => (
             <div key={f.id} className="border rounded p-4 bg-white">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-xs text-gray-500">CF:</span> <span className="font-mono">{f.codice_fiscale || '—'}</span></div>
-                <div><span className="text-xs text-gray-500">P.IVA:</span> <span className="font-mono">{f.partita_iva || '—'}</span></div>
-                <div><span className="text-xs text-gray-500">Regime:</span> {f.regime_fiscale || '—'}</div>
-                <div><span className="text-xs text-gray-500">Stato:</span> {f.stato || '—'}</div>
+              <div className="flex justify-between items-start">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-xs text-gray-500">CF:</span> <span className="font-mono">{f.codice_fiscale || '—'}</span></div>
+                  <div><span className="text-xs text-gray-500">P.IVA:</span> <span className="font-mono">{f.partita_iva || '—'}</span></div>
+                  <div><span className="text-xs text-gray-500">Regime:</span> {f.regime_fiscale || '—'}</div>
+                  <div><span className="text-xs text-gray-500">Stato:</span> {f.stato || '—'}</div>
+                </div>
+                <button onClick={() => handleDeleteFiscale(f.id)} className="text-red-500 hover:text-red-700 text-xs">Elimina</button>
               </div>
               {f.note && <p className="text-xs text-gray-500 mt-2">{f.note}</p>}
             </div>
@@ -386,10 +472,13 @@ export default function ClientDetail() {
             <div key={t.id} className="border rounded p-3 bg-white flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-900">{t.descrizione}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Scadenza: {formatDate(t.due_date)}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs text-gray-500">Scadenza: {formatDate(t.due_date)}</p>
+                  {badgeScadenza(t.due_date)}
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <select value={t.stato} onChange={e => handleTaskStatus(t.id, e.target.value)} className={`rounded px-2 py-1 text-xs font-medium ${statoColor(t.stato)}`}>
+                <select value={t.stato} onChange={e => handleTaskStatus(t.id, e.target.value)} className={'rounded px-2 py-1 text-xs font-medium ' + statoColor(t.stato)}>
                   <option value="aperto">Aperto</option>
                   <option value="in_corso">In corso</option>
                   <option value="chiuso">Chiuso</option>
@@ -413,14 +502,14 @@ export default function ClientDetail() {
           <h1 className="text-3xl font-bold text-gray-900">{client.nome}</h1>
           {client.studio && <p className="text-gray-500 mt-1">{client.studio}</p>}
         </div>
-        <span className={`text-sm font-semibold px-3 py-1 rounded-full bg-gray-100 ${rischioColor(client.rischi)}`}>
+        <span className={'text-sm font-semibold px-3 py-1 rounded-full bg-gray-100 ' + rischioColor(client.rischi)}>
           Rischio {client.rischi}
         </span>
       </div>
       {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm">Errore: {error}</div>}
       <div className="flex border-b border-gray-200 mb-6">
         {TAB_LIST.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-medium border-b-2 transition ${activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          <button key={tab} onClick={() => setActiveTab(tab)} className={'px-4 py-2 text-sm font-medium border-b-2 transition ' + (activeTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700')}>
             {tab}
           </button>
         ))}
