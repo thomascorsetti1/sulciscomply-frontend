@@ -167,7 +167,7 @@ export default function TaskList() {
         </button>
         <button
           onClick={async () => {
-            const res = await fetch('https://sulciscomply-backend.onrender.com/api/notify-tasks', { method: 'POST' })
+            const res = await fetch('https://sulciscomply-api.onrender.com/api/notify-tasks, { method: 'POST' })
             const data = await res.json()
             alert(JSON.stringify(data))
           }}
