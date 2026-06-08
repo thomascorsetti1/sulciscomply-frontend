@@ -10,11 +10,14 @@ export default function TaskList() {
   const [search, setSearch] = useState('')
   const [filterStato, setFilterStato] = useState('tutti')
   const [filterClient, setFilterClient] = useState('tutti')
+  const [filterPriorita, setFilterPriorita] = useState('tutti')
   const [formData, setFormData] = useState({
     client_id: '',
     descrizione: '',
     stato: 'aperto',
     due_date: '',
+    priorita: 'media',
+    assigned_to: '',
   })
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function TaskList() {
     e.preventDefault()
     try {
       await tasksAPI.create({ ...formData, due_date: formData.due_date || null })
-      setFormData({ client_id: '', descrizione: '', stato: 'aperto', due_date: '' })
+      setFormData({ client_id: '', descrizione: '', stato: 'aperto', due_date: '', priorita: 'media', assigned_to: '' })
       setShowForm(false)
       fetchData()
     } catch (err) {
@@ -86,6 +89,22 @@ export default function TaskList() {
     }
   }
 
+  const getPrioritaColor = (priorita) => {
+    switch (priorita) {
+      case 'alta': return 'bg-red-100 text-red-700'
+      case 'bassa': return 'bg-gray-100 text-gray-600'
+      default: return 'bg-orange-100 text-orange-700'
+    }
+  }
+
+  const getPrioritaLabel = (priorita) => {
+    switch (priorita) {
+      case 'alta': return '🔴 Alta'
+      case 'bassa': return '🟢 Bassa'
+      default: return '🟡 Media'
+    }
+  }
+
   const isOverdue = (task) => {
     if (!task.due_date || task.stato === 'chiuso') return false
     return new Date(task.due_date) < new Date()
@@ -107,12 +126,13 @@ export default function TaskList() {
       clientName.includes(search.toLowerCase())
     const matchStato = filterStato === 'tutti' || task.stato === filterStato
     const matchClient = filterClient === 'tutti' || task.client_id === filterClient
-    return matchSearch && matchStato && matchClient
+    const matchPriorita = filterPriorita === 'tutti' || task.priorita === filterPriorita
+    return matchSearch && matchStato && matchClient && matchPriorita
   })
 
   const overdueCount = tasks.filter(isOverdue).length
   const dueTodayCount = tasks.filter(isDueToday).length
-  const hasFilters = search || filterStato !== 'tutti' || filterClient !== 'tutti'
+  const hasFilters = search || filterStato !== 'tutti' || filterClient !== 'tutti' || filterPriorita !== 'tutti'
 
   if (loading) return <div className="p-8 text-center">Caricamento...</div>
 
@@ -155,21 +175,19 @@ export default function TaskList() {
           onChange={e => setSearch(e.target.value)}
           className="flex-1 min-w-48 rounded border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <select
-          value={filterStato}
-          onChange={e => setFilterStato(e.target.value)}
-          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+        <select value={filterStato} onChange={e => setFilterStato(e.target.value)} className="rounded border border-gray-300 px-3 py-2">
           <option value="tutti">Tutti gli stati</option>
           <option value="aperto">🟡 Aperto</option>
           <option value="in_corso">🔵 In corso</option>
           <option value="chiuso">🟢 Chiuso</option>
         </select>
-        <select
-          value={filterClient}
-          onChange={e => setFilterClient(e.target.value)}
-          className="rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
+        <select value={filterPriorita} onChange={e => setFilterPriorita(e.target.value)} className="rounded border border-gray-300 px-3 py-2">
+          <option value="tutti">Tutte le priorità</option>
+          <option value="alta">🔴 Alta</option>
+          <option value="media">🟡 Media</option>
+          <option value="bassa">🟢 Bassa</option>
+        </select>
+        <select value={filterClient} onChange={e => setFilterClient(e.target.value)} className="rounded border border-gray-300 px-3 py-2">
           <option value="tutti">Tutti i clienti</option>
           {clients.map(c => (
             <option key={c.id} value={c.id}>{c.nome}</option>
@@ -177,7 +195,7 @@ export default function TaskList() {
         </select>
         {hasFilters && (
           <button
-            onClick={() => { setSearch(''); setFilterStato('tutti'); setFilterClient('tutti') }}
+            onClick={() => { setSearch(''); setFilterStato('tutti'); setFilterClient('tutti'); setFilterPriorita('tutti') }}
             className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded"
           >
             ✕ Reset
@@ -216,8 +234,22 @@ export default function TaskList() {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700">Priorità</label>
+                <select name="priorita" value={formData.priorita} onChange={handleInputChange} className="mt-1 block w-full rounded border-gray-300 border px-3 py-2">
+                  <option value="alta">🔴 Alta</option>
+                  <option value="media">🟡 Media</option>
+                  <option value="bassa">🟢 Bassa</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700">Scadenza</label>
                 <input type="date" name="due_date" value={formData.due_date} onChange={handleInputChange} className="mt-1 block w-full rounded border-gray-300 border px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Assegnato a</label>
+                <input type="text" name="assigned_to" value={formData.assigned_to} onChange={handleInputChange} className="mt-1 block w-full rounded border-gray-300 border px-3 py-2" placeholder="Es. Mario Rossi" />
               </div>
             </div>
             <button onClick={handleSubmit} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salva Task</button>
@@ -231,7 +263,9 @@ export default function TaskList() {
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Descrizione</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Cliente</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Priorità</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Scadenza</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Assegnato</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Stato</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Azioni</th>
             </tr>
@@ -239,7 +273,7 @@ export default function TaskList() {
           <tbody>
             {filteredTasks.length === 0 && (
               <tr>
-                <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                   {hasFilters ? 'Nessun task corrisponde ai filtri.' : 'Nessun task trovato.'}
                 </td>
               </tr>
@@ -254,9 +288,15 @@ export default function TaskList() {
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600">{getClientName(task)}</td>
+                <td className="px-6 py-4 text-sm">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getPrioritaColor(task.priorita)}`}>
+                    {getPrioritaLabel(task.priorita)}
+                  </span>
+                </td>
                 <td className={`px-6 py-4 text-sm font-medium ${isOverdue(task) ? 'text-red-600' : isDueToday(task) ? 'text-orange-600' : 'text-gray-600'}`}>
                   {formatDate(task.due_date)}
                 </td>
+                <td className="px-6 py-4 text-sm text-gray-600">{task.assigned_to || '—'}</td>
                 <td className="px-6 py-4 text-sm">
                   <select value={task.stato} onChange={(e) => handleStatusChange(task.id, e.target.value)} className={`rounded px-2 py-1 text-sm font-medium ${getStatoColor(task.stato)}`}>
                     <option value="aperto">Aperto</option>
