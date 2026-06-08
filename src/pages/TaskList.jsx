@@ -165,6 +165,16 @@ export default function TaskList() {
         >
           {showForm ? 'Annulla' : 'Nuovo Task'}
         </button>
+        <button
+          onClick={async () => {
+            const res = await fetch('https://sulciscomply-backend.onrender.com/api/notify-tasks', { method: 'POST' })
+            const data = await res.json()
+            alert(JSON.stringify(data))
+          }}
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+        >
+          Test Email
+        </button>
       </div>
 
       <div className="flex gap-3 mb-6 flex-wrap">
