@@ -77,7 +77,7 @@ export default function AuditTrail() {
   useEffect(() => {
     fetch(`${API}/api/clients`)
       .then((r) => r.json())
-      .then((data) => setClients(Array.isArray(data) ? data : []))
+      .then((data) => setClients(Array.isArray(data.data) ? data.data : []))
       .catch(() => {});
   }, []);
 
@@ -94,7 +94,7 @@ export default function AuditTrail() {
         if (!r.ok) throw new Error("Errore nel caricamento");
         return r.json();
       })
-      .then((data) => setLogs(Array.isArray(data) ? data : []))
+      .then((data) => setLogs(Array.isArray(data.data) ? data.data : []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [filtroCliente, filtroEntita]);
