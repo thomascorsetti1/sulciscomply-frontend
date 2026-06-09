@@ -76,3 +76,7 @@ export const profiliFiscaliAPI = {
   update: (id, data) => apiCall(`/profili-fiscali/${id}`, 'PUT', data),
   delete: (id) => apiCall(`/profili-fiscali/${id}`, 'DELETE'),
 }
+
+export const auditLogAPI = {
+  getAll: (params = '') => apiCall(`/audit-log${params}`),
+}
