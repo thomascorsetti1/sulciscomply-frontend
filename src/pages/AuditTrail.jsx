@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
+import { auditLogAPI, clientsAPI } from "../api";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 
 const ENTITA_OPTIONS = [
   { value: "", label: "Tutte le entità" },
@@ -75,10 +76,7 @@ export default function AuditTrail() {
 
   // Carica lista clienti per il filtro
   useEffect(() => {
-    fetch(`${API}/api/clients`)
-      .then((r) => r.json())
-      .then((data) => setClients(Array.isArray(data.data) ? data.data : []))
-      .catch(() => {});
+    clientsAPI.getAll().then(setClients).catch(() => {});
   }, []);
 
   const fetchLogs = useCallback(() => {
@@ -89,12 +87,8 @@ export default function AuditTrail() {
     if (filtroCliente) params.set("client_id", filtroCliente);
     if (filtroEntita) params.set("entita", filtroEntita);
 
-    fetch(`${API}/api/audit-log?${params.toString()}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Errore nel caricamento");
-        return r.json();
-      })
-      .then((data) => setLogs(Array.isArray(data.data) ? data.data : []))
+    auditLogAPI.getAll(params.toString() ? `?${params.toString()}` : '')
+      .then(setLogs)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [filtroCliente, filtroEntita]);
