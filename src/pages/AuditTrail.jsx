@@ -13,9 +13,9 @@ const ENTITA_OPTIONS = [
 ];
 
 const AZIONE_COLORS = {
-  CREATE: "bg-emerald-100 text-emerald-800",
-  UPDATE: "bg-amber-100 text-amber-800",
-  DELETE: "bg-red-100 text-red-800",
+  creato: "bg-emerald-100 text-emerald-800",
+  modificato: "bg-amber-100 text-amber-800",
+  eliminato: "bg-red-100 text-red-800",
 };
 
 function formatDate(iso) {
@@ -199,7 +199,7 @@ export default function AuditTrail() {
                   </td>
                   <td className="px-4 py-3 text-slate-600 text-xs">
                     {log.client_id
-                      ? clients.find((c) => c.id === log.client_id)?.ragione_sociale ||
+                      ? clients.find((c) => c.id === log.client_id)?.nome ||
                         log.client_id
                       : "—"}
                   </td>
