@@ -53,7 +53,22 @@ export default function Report() {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Report & Rischio</h1>
+  <div className="flex justify-between items-center mb-8">
+    <h1 className="text-4xl font-bold text-gray-900">Report & Rischio</h1>
+    <button
+      onClick={() => {
+        const rows = [['Cliente','Studio','Rischio','Task aperti'], ...semaforo.map(c => [c.nome, c.studio || '', c.semaforo, c.task_aperti])];
+        const csv = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'report-rischio.csv'; a.click();
+      }}
+      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
+    >
+      ⬇ Esporta CSV
+    </button>
+  </div>
 
       {/* SEMAFORO CLIENTI */}
       <div className="bg-white rounded-lg shadow mb-8">
