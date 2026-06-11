@@ -1,3 +1,4 @@
+import { PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 import { useEffect, useState } from "react";
 import { clientsAPI, tasksAPI } from "../api";
 
@@ -69,7 +70,28 @@ export default function Report() {
       ⬇ Esporta CSV
     </button>
   </div>
-
+ 
+    {/* GRAFICO RISCHIO */}
+      <div className="bg-white rounded-lg shadow mb-8 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Distribuzione Rischio</h2>
+        <PieChart width={300} height={250}>
+          <Pie
+            data={[
+              { name: 'Verde', value: semaforo.filter(c => c.semaforo === 'verde').length || 0 },
+              { name: 'Giallo', value: semaforo.filter(c => c.semaforo === 'giallo').length || 0 },
+              { name: 'Rosso', value: semaforo.filter(c => c.semaforo === 'rosso').length || 0 },
+            ]}
+            cx={140} cy={110} outerRadius={90} dataKey="value"
+          >
+            <Cell fill="#22c55e" />
+            <Cell fill="#eab308" />
+            <Cell fill="#ef4444" />
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </div>
+      
       {/* SEMAFORO CLIENTI */}
       <div className="bg-white rounded-lg shadow mb-8">
         <div className="px-6 py-4 border-b">
