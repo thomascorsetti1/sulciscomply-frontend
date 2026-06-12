@@ -6,8 +6,8 @@ import ClientList from './pages/ClientList'
 import ClientDetail from './pages/ClientDetail'
 import TaskList from './pages/TaskList'
 import Login from './pages/Login'
-import Calendar from './pages/Calendar'
 import AuditTrail from './pages/AuditTrail'
+import Report from './pages/Report'
 
 const API_BASE = 'https://sulciscomply-api.onrender.com/api'
 const GIORNI_PREAVVISO = 7
@@ -42,11 +42,11 @@ function Sidebar({ onLogout, userEmail, taskInRitardo }) {
             </span>
           )}
         </Link>
-        <Link to="/calendario" className={linkClass('/calendario')}>
-          <span>📅 Calendario</span>
-        </Link>
         <Link to="/audit-trail" className={linkClass('/audit-trail')}>
           <span>🔍 Audit Trail</span>
+        </Link>
+        <Link to="/report" className={linkClass('/report')}>
+          <span>📈 Report</span>
         </Link>
       </nav>
       <div className="p-6 border-t border-gray-800">
@@ -57,7 +57,7 @@ function Sidebar({ onLogout, userEmail, taskInRitardo }) {
         >
           🚪 Esci
         </button>
-        <p className="text-xs text-gray-600 mt-3">© 2024 Compliance Dashboard</p>
+        <p className="text-xs text-gray-600 mt-3">© 2025 SulcisComply</p>
       </div>
     </div>
   )
@@ -104,7 +104,6 @@ function NotificationBell({ notifiche }) {
               <span className="text-xs text-gray-400">Nessuna notifica</span>
             )}
           </div>
-
           <div className="max-h-80 overflow-y-auto">
             {totale === 0 ? (
               <div className="px-4 py-6 text-center">
@@ -132,7 +131,6 @@ function NotificationBell({ notifiche }) {
                     ))}
                   </div>
                 )}
-
                 {scadenza.length > 0 && (
                   <div>
                     <div className="px-4 py-2 bg-yellow-50 flex items-center gap-2">
@@ -155,14 +153,9 @@ function NotificationBell({ notifiche }) {
               </>
             )}
           </div>
-
           {totale > 0 && (
             <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-              <Link
-                to="/tasks"
-                onClick={() => setAperto(false)}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
+              <Link to="/tasks" onClick={() => setAperto(false)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                 Vai a tutti i task →
               </Link>
             </div>
@@ -190,30 +183,65 @@ function AppLayout({ session }) {
     try {
       const { data: { session: s } } = await supabase.auth.getSession()
       const token = s?.access_token
-      const res = await fetch(`${API_BASE}/tasks`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      const json = await res.json()
-      if (!json.success) return
+      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+      const [resTasks, resAml, resGdpr] = await Promise.all([
+        fetch(`${API_BASE}/tasks`, { headers }),
+        fetch(`${API_BASE}/aml-fascicoli`, { headers }),
+        fetch(`${API_BASE}/gdpr`, { headers }),
+      ])
+
+      const [jsonTasks, jsonAml, jsonGdpr] = await Promise.all([
+        resTasks.json(),
+        resAml.json(),
+        resGdpr.json(),
+      ])
 
       const oggi = new Date()
       oggi.setHours(0, 0, 0, 0)
       const fraXGiorni = new Date(oggi)
       fraXGiorni.setDate(fraXGiorni.getDate() + GIORNI_PREAVVISO)
 
-      const tasks = json.data || []
       const nuoveNotifiche = []
 
+      const tasks = jsonTasks.data || []
       tasks.forEach((t) => {
         if (!t.due_date || t.stato === 'chiuso') return
         const scadenza = new Date(t.due_date)
         scadenza.setHours(0, 0, 0, 0)
         const cliente = t.clients?.nome || null
-
         if (scadenza < oggi) {
-          nuoveNotifiche.push({ ...t, tipo: 'ritardo', cliente })
+          nuoveNotifiche.push({ ...t, tipo: 'ritardo', cliente, categoria: 'Task' })
         } else if (scadenza <= fraXGiorni) {
-          nuoveNotifiche.push({ ...t, tipo: 'scadenza', cliente })
+          nuoveNotifiche.push({ ...t, tipo: 'scadenza', cliente, categoria: 'Task' })
+        }
+      })
+
+      const amlList = jsonAml.data || []
+      amlList.forEach((a) => {
+        if (!a.scadenza_aggiornamento) return
+        const scadenza = new Date(a.scadenza_aggiornamento)
+        scadenza.setHours(0, 0, 0, 0)
+        const cliente = a.clients?.nome || null
+        const item = { id: a.id, descrizione: `AML: aggiorna fascicolo`, due_date: a.scadenza_aggiornamento, cliente }
+        if (scadenza < oggi) {
+          nuoveNotifiche.push({ ...item, tipo: 'ritardo', categoria: 'AML' })
+        } else if (scadenza <= fraXGiorni) {
+          nuoveNotifiche.push({ ...item, tipo: 'scadenza', categoria: 'AML' })
+        }
+      })
+
+      const gdprList = jsonGdpr.data || []
+      gdprList.forEach((g) => {
+        if (!g.scadenza_aggiornamento) return
+        const scadenza = new Date(g.scadenza_aggiornamento)
+        scadenza.setHours(0, 0, 0, 0)
+        const cliente = g.clients?.nome || null
+        const item = { id: g.id, descrizione: `GDPR: aggiorna registro`, due_date: g.scadenza_aggiornamento, cliente }
+        if (scadenza < oggi) {
+          nuoveNotifiche.push({ ...item, tipo: 'ritardo', categoria: 'GDPR' })
+        } else if (scadenza <= fraXGiorni) {
+          nuoveNotifiche.push({ ...item, tipo: 'scadenza', categoria: 'GDPR' })
         }
       })
 
@@ -254,8 +282,8 @@ function AppLayout({ session }) {
             <Route path="/clients" element={<ClientList />} />
             <Route path="/clients/:id" element={<ClientDetail />} />
             <Route path="/tasks" element={<TaskList />} />
-            <Route path="/calendario" element={<Calendar />} />
             <Route path="/audit-trail" element={<AuditTrail />} />
+            <Route path="/report" element={<Report />} />
           </Routes>
         </div>
       </div>
